@@ -8,5 +8,4 @@ data_sources:
 from_email: alerts@happyscribe.com
 
 check_schedules:
-  - "1 hour"
   - "5 minutes"
