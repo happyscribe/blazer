@@ -7,7 +7,7 @@ Rails.application.config.action_mailer.smtp_settings = {
   :user_name => 'resend',
   :password => ENV['RESEND_API_KEY'],
   :domain => 'happyscribe.com',
-  :port => 587,
+  :port => 465,
   :authentication => :plain,
   :tls => true,
 }
