@@ -9,5 +9,5 @@ Rails.application.config.action_mailer.smtp_settings = {
   :domain => 'happyscribe.com',
   :port => 587,
   :authentication => :plain,
-  :ssl => true,
+  :tls => true,
 }
