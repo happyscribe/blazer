@@ -1,0 +1,4 @@
+
+data_sources:
+  main:
+    url: <%= ENV["PRODUCTION_FOLLOWER_DB"] %>
