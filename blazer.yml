@@ -1,4 +1,6 @@
 
 data_sources:
   main:
+    url: <%= ENV["DATABASE_URL"] %>
+  production:
     url: <%= ENV["PRODUCTION_FOLLOWER_DB"] %>
