@@ -3,14 +3,11 @@ Rails.application.config.action_mailer.default_url_options = {
 }
 Rails.application.config.action_mailer.delivery_method = :smtp
 Rails.application.config.action_mailer.smtp_settings = {
-  :user_name => 'apikey',
-  :password => ENV['SENDGRID_API_KEY'],
+  :address => 'smtp.resend.com',
+  :user_name => 'resend',
+  :password => ENV['RESEND_API_KEY'],
   :domain => 'happyscribe.com',
-  :address => 'smtp.sendgrid.net',
-  :port => 587,
+  :port => 465,
   :authentication => :plain,
   :enable_starttls_auto => true,
-}
-Rails.application.config.action_mailer.default_options = {
-  from: "hi@happyscribe.com"
 }
