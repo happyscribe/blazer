@@ -12,5 +12,5 @@ Rails.application.config.action_mailer.smtp_settings = {
   :enable_starttls_auto => true,
 }
 Rails.application.config.action_mailer.default_options = {
-  from: "mailer@product-alerts.happyscribe.com"
+  from: "alerts@happyscribe.com"
 }
