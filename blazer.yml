@@ -6,3 +6,7 @@ data_sources:
     url: <%= ENV["PRODUCTION_FOLLOWER_DB"] %>
 
 from_email: alerts@happyscribe.com
+
+check_schedules:
+  - "1 hour"
+  - "5 minutes"
