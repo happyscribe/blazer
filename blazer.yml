@@ -4,6 +4,8 @@ data_sources:
     url: <%= ENV["DATABASE_URL"] %>
   production:
     url: <%= ENV["PRODUCTION_FOLLOWER_DB"] %>
+  prod-primary:
+    url: <%= ENV["PRODUCTION_PRIMARY_DB"] %>
 
 from_email: alerts@happyscribe.com
 
