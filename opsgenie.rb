@@ -2,42 +2,31 @@ require "net/http"
 require "uri"
 require "json"
 
-# Routes Blazer check alerts to Opsgenie instead of Slack.
-#
-# Priority is derived from the check's `slack_channels` value, which we now treat
-# as a severity bucket (e.g. "critical-alerts" -> P1). This keeps the DB schema
-# stock — no extra column — so the Blazer schema stays reproducible from the gem.
+# Routes Blazer check alerts to Opsgenie. Blazer 3.x has no notifier hook, so we
+# wrap Blazer::SlackNotifier.state_change: super keeps Slack firing and we also
+# notify Opsgenie (parallel run). Cutover to Opsgenie-only = unset
+# BLAZER_SLACK_WEBHOOK_URL (Slack goes quiet, Opsgenie keeps firing).
+# Priority comes from the check's slack_channels bucket (critical-alerts -> P1,
+# alerts -> P3), which keeps the DB schema stock.
 module OpsgenieNotifier
   API_URL          = "https://api.opsgenie.com/v2/alerts".freeze
   API_KEY          = ENV["OPSGENIE_API_KEY"]
   DEFAULT_PRIORITY = "P3".freeze
 
-  # Severity bucket (stored in the check's slack_channels field) -> Opsgenie priority.
   CHANNEL_PRIORITY = {
     "critical-alerts" => "P1",
     "alerts"          => "P3",
   }.freeze
 
   class << self
-    # Keeps the field rendered in the check form and permitted as a param.
-    def fields
-      [:slack_channels]
-    end
-
-    # Fired on each check state transition (passing <-> failing).
-    def state_change(check:, state:, state_was:, result:, message:, check_type:)
+    def notify(check, state, message)
       return unless API_KEY
 
-      case state
-      when "failing" then create_alert(check, message)
-      when "passing" then close_alert(check)
+      if state == "passing"
+        close_alert(check)
+      else
+        create_alert(check, message)
       end
-    end
-
-    # Fired by `rake blazer:send_failing_checks` (digest of still-failing checks).
-    def failing_checks(checks)
-      return unless API_KEY
-      checks.each { |check| create_alert(check, check.state) }
     end
 
     private
@@ -45,7 +34,6 @@ module OpsgenieNotifier
       def priority_for(check)
         buckets = check.slack_channels.to_s.split(",").map { |c| c.strip.downcase }
         matched = buckets.map { |b| CHANNEL_PRIORITY[b] }.compact
-        # Most urgent wins (P1 < P3); nothing recognised -> safe default.
         matched.min_by { |p| p[1..-1].to_i } || DEFAULT_PRIORITY
       end
 
@@ -83,10 +71,14 @@ module OpsgenieNotifier
   end
 end
 
-# Parallel run: register Opsgenie ALONGSIDE the existing Slack notifier so alerts
-# fire to BOTH while we validate Opsgenie routing. This means duplicate
-# notifications for now — that's intentional. Once Opsgenie is confirmed working,
-# cut over by adding `Blazer.notifiers.delete(Blazer::SlackNotifier)` above.
-if OpsgenieNotifier::API_KEY
-  Blazer.register_notifier(OpsgenieNotifier)
+module OpsgenieSlackNotifierPatch
+  def state_change(*args)
+    super
+    check, state, message = args[0], args[1], args[4]
+    OpsgenieNotifier.notify(check, state, message)
+  end
+end
+
+if defined?(Blazer::SlackNotifier)
+  Blazer::SlackNotifier.singleton_class.prepend(OpsgenieSlackNotifierPatch)
 end

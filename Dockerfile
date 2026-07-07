@@ -1,4 +1,4 @@
-FROM ankane/blazer
+FROM ankane/blazer:v3.4.0
 
 COPY blazer.yml /app/config/blazer.yml
 COPY mailer.rb /app/config/initializers/mailer.rb
