@@ -8,6 +8,8 @@ require "json"
 # BLAZER_SLACK_WEBHOOK_URL (Slack goes quiet, Opsgenie keeps firing).
 # Priority comes from the check's slack_channels bucket (critical-alerts -> P1,
 # alerts -> P3), which keeps the DB schema stock.
+# "timed out" and "error" mean the query couldn't run (e.g. the follower is down
+# or lagging), not that the check failed, so they never open an Opsgenie alert.
 module OpsgenieNotifier
   API_URL          = "https://api.opsgenie.com/v2/alerts".freeze
   API_KEY          = ENV["OPSGENIE_API_KEY"]
@@ -18,9 +20,12 @@ module OpsgenieNotifier
     "alerts"          => "P3",
   }.freeze
 
+  QUERY_DID_NOT_RUN_STATES = ["timed out", "error"].freeze
+
   class << self
     def notify(check, state, message)
       return unless API_KEY
+      return if QUERY_DID_NOT_RUN_STATES.include?(state)
 
       if state == "passing"
         close_alert(check)
