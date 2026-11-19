@@ -2,9 +2,8 @@ require "net/http"
 require "uri"
 require "json"
 
-# Routes Blazer check alerts to Opsgenie. Blazer 3.x has no notifier hook, so we
-# wrap Blazer::SlackNotifier.state_change: super keeps Slack firing and we also
-# notify Opsgenie (parallel run). Cutover to Opsgenie-only = unset
+# Routes Blazer check alerts to Opsgenie, registered next to Blazer's Slack and
+# email notifiers (parallel run). Cutover to Opsgenie-only = unset
 # BLAZER_SLACK_WEBHOOK_URL (Slack goes quiet, Opsgenie keeps firing).
 # Priority comes from the check's slack_channels bucket (critical-alerts -> P1,
 # alerts -> P3), which keeps the DB schema stock.
@@ -23,7 +22,7 @@ module OpsgenieNotifier
   QUERY_DID_NOT_RUN_STATES = ["timed out", "error"].freeze
 
   class << self
-    def notify(check, state, message)
+    def state_change(check:, state:, message:, **)
       return unless API_KEY
       return if QUERY_DID_NOT_RUN_STATES.include?(state)
 
@@ -32,6 +31,17 @@ module OpsgenieNotifier
       else
         create_alert(check, message)
       end
+    end
+
+    # The digest of failing checks stays on Slack/email; Opsgenie only tracks state changes.
+    def failing_checks(_checks); end
+
+    def notify_list(_check)
+      []
+    end
+
+    def fields
+      []
     end
 
     private
@@ -76,14 +86,4 @@ module OpsgenieNotifier
   end
 end
 
-module OpsgenieSlackNotifierPatch
-  def state_change(*args)
-    super
-    check, state, message = args[0], args[1], args[4]
-    OpsgenieNotifier.notify(check, state, message)
-  end
-end
-
-if defined?(Blazer::SlackNotifier)
-  Blazer::SlackNotifier.singleton_class.prepend(OpsgenieSlackNotifierPatch)
-end
+Blazer.register_notifier(OpsgenieNotifier)
